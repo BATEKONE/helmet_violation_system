@@ -1,0 +1,111 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / lint / type check
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+dmypy.json
+
+# --- IDE / editor ---
+.cursor/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+
+# --- Runtime data (API, uploads, jobs, DB) ---
+data/
+*.db
+*.sqlite3
+
+# --- ML: YOLO / Ultralytics ---
+runs/
+wandb/
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Автоматически сгенерированный конфиг с абсолютными путями
+configs/helmet_dataset.resolved.yaml
+
+# --- Datasets (тяжёлые; конфиги в configs/) ---
+datasets/hozngvan/
+datasets/yolo_ready/
+datasets/**/images/
+datasets/**/labels/
+datasets/**/*.jpg
+datasets/**/*.jpeg
+datasets/**/*.png
+datasets/**/*.mp4
+datasets/**/*.avi
+
+# Архивы датасетов
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.rar
+
+# --- Inference / CLI artifacts ---
+outputs/
+events/
+
+# --- Media (тестовые видео, результаты) ---
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.wmv
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Jupyter ---
+.ipynb_checkpoints/

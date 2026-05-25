@@ -1,0 +1,9 @@
+path: datasets/yolo_ready
+
+train: images/training
+val: images/validation
+test: images/test
+
+names:
+  0: helmet
+  1: no_helmet

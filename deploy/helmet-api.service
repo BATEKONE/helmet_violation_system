@@ -1,0 +1,15 @@
+[Unit]
+Description=Helmet Violation API
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=helmet
+WorkingDirectory=/opt/helmet_violation_system
+EnvironmentFile=/opt/helmet_violation_system/.env
+ExecStart=/opt/helmet_violation_system/.venv/bin/python scripts/run_api.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

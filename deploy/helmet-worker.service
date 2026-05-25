@@ -1,0 +1,15 @@
+[Unit]
+Description=Helmet Violation RQ Worker
+After=network.target redis.service
+
+[Service]
+Type=simple
+User=helmet
+WorkingDirectory=/opt/helmet_violation_system
+EnvironmentFile=/opt/helmet_violation_system/.env
+ExecStart=/opt/helmet_violation_system/.venv/bin/python workers/run_worker.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,9 @@
+# Исключения для rsync: тяжёлый исходный датасет и мусор (подправьте под себя)
+datasets/hozngvan/
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.cursor/
