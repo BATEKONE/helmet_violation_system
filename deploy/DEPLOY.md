@@ -26,37 +26,88 @@ CREATE DATABASE helmet_db OWNER helmet;
 \q
 ```
 
-## 3. Клонирование и venv
+## 3. Клонирование и venv (Python 3.10)
 
-Проверьте версию Python (минимум **3.8**, в проекте включена совместимость):
-
-```bash
-python3 --version
-```
-
-Если `apt` не находит `python3.10` — **не обязательно** его ставить: используйте
-системный `python3` (3.8+) после обновления кода (`git pull`). Ошибка `list[str]`
-уже исправлена в репозитории.
-
-Установка 3.10 только на Ubuntu (репозиторий deadsnakes):
-
-```bash
-sudo apt install -y software-properties-common
-sudo add-apt-repository -y ppa:deadsnakes/ppa
-sudo apt update
-sudo apt install -y python3.10 python3.10-venv python3.10-dev
-```
-
-На старом Debian пакета 3.10 может не быть — оставайтесь на `python3` из системы.
+Рекомендуется **Python 3.10.14** (файл `.python-version` в корне репозитория для pyenv).
 
 ```bash
 sudo mkdir -p /opt/helmet_violation_system
 sudo chown $USER:$USER /opt/helmet_violation_system
 cd /opt/helmet_violation_system
 git clone <your-repo-url> .
+```
 
-python3 -m venv .venv
-# или явно: python3.10 -m venv .venv
+### Вариант A: pyenv (Debian / когда `apt` не находит python3.10)
+
+Ошибка `pyenv: python: command not found` значит, что 3.10 установлен, но **не выбран**
+в каталоге проекта. Не используйте голый `python3 -m venv` — часто это системный 3.11/3.12.
+
+**Один раз — установка pyenv и Python 3.10.14:**
+
+```bash
+sudo apt update
+sudo apt install -y build-essential libssl-dev zlib1g-dev libbz2-dev \
+  libreadline-dev libsqlite3-dev curl llvm libncursesw5-dev xz-utils \
+  tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev git
+
+curl https://pyenv.run | bash
+# Добавьте в ~/.bashrc (для root: /root/.bashrc):
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+source ~/.bashrc
+```
+
+**Создание venv (автоматически):**
+
+```bash
+cd /opt/helmet_violation_system
+bash deploy/setup_venv_pyenv.sh
+```
+
+Скрипт выполняет: `pyenv local 3.10.14` → `python -m venv .venv` → проверка версии → `pip install`.
+
+На VPS **без GPU**, если `torch` не ставится:
+
+```bash
+INSTALL_TORCH_CPU=1 bash deploy/setup_venv_pyenv.sh
+```
+
+**Вручную (если скрипт не нужен):**
+
+```bash
+cd /opt/helmet_violation_system
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"
+
+pyenv local 3.10.14
+python --version          # Python 3.10.14
+rm -rf .venv
+python -m venv .venv
+source .venv/bin/activate
+python --version          # снова 3.10.14 — обязательно!
+pip install -U pip setuptools wheel
+pip install -r requirements.txt
+```
+
+Проверка после `python3 -m venv` (если уже создавали venv раньше):
+
+```bash
+.venv/bin/python --version
+# если не 3.10.14 — rm -rf .venv и повторите шаги выше
+```
+
+### Вариант B: Ubuntu + deadsnakes (если PPA доступен)
+
+```bash
+sudo apt install -y software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install -y python3.10 python3.10-venv python3.10-dev
+
+cd /opt/helmet_violation_system
+python3.10 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -r requirements.txt
@@ -84,11 +135,17 @@ DATA_DIR=/opt/helmet_violation_system/data
 INLINE_WORKER=false
 ```
 
-Инициализация БД:
+Инициализация БД (из активированного venv или полным путём):
 
 ```bash
+source .venv/bin/activate
 python scripts/init_db.py
+# или:
+/opt/helmet_violation_system/.venv/bin/python scripts/init_db.py
 ```
+
+**systemd** не читает `~/.bashrc` и pyenv — в unit-файлах только
+`/opt/helmet_violation_system/.venv/bin/python` (см. `deploy/helmet-api.service`).
 
 ## 5. systemd — API
 

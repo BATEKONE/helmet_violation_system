@@ -59,7 +59,7 @@ python main.py
 
 Кратко:
 1. PostgreSQL + Redis на сервере
-2. `venv` + `pip install -r requirements.txt`
+2. Python 3.10: `bash deploy/setup_venv_pyenv.sh` (см. [deploy/DEPLOY.md](deploy/DEPLOY.md))
 3. `.env` с `DATABASE_URL=postgresql://...`, `INLINE_WORKER=false`
 4. systemd: `helmet-api.service`, `helmet-worker.service`
 
