@@ -28,6 +28,27 @@ CREATE DATABASE helmet_db OWNER helmet;
 
 ## 3. Клонирование и venv
 
+Проверьте версию Python (минимум **3.8**, в проекте включена совместимость):
+
+```bash
+python3 --version
+```
+
+Если `apt` не находит `python3.10` — **не обязательно** его ставить: используйте
+системный `python3` (3.8+) после обновления кода (`git pull`). Ошибка `list[str]`
+уже исправлена в репозитории.
+
+Установка 3.10 только на Ubuntu (репозиторий deadsnakes):
+
+```bash
+sudo apt install -y software-properties-common
+sudo add-apt-repository -y ppa:deadsnakes/ppa
+sudo apt update
+sudo apt install -y python3.10 python3.10-venv python3.10-dev
+```
+
+На старом Debian пакета 3.10 может не быть — оставайтесь на `python3` из системы.
+
 ```bash
 sudo mkdir -p /opt/helmet_violation_system
 sudo chown $USER:$USER /opt/helmet_violation_system
@@ -35,6 +56,7 @@ cd /opt/helmet_violation_system
 git clone <your-repo-url> .
 
 python3 -m venv .venv
+# или явно: python3.10 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -r requirements.txt

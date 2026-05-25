@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import List
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -75,7 +78,7 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
     return _job_response(job, settings.api_public_url)
 
 
-@router.get("/{job_id}/events", response_model=list[ViolationEventResponse])
+@router.get("/{job_id}/events", response_model=List[ViolationEventResponse])
 def list_job_events(job_id: str, db: Session = Depends(get_db)):
     settings = get_settings()
     service = JobService(db)
