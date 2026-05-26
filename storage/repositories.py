@@ -44,11 +44,11 @@ class JobRepository:
     def mark_completed(
         self,
         job: Job,
-        output_path: Path,
+        output_path: Path | None,
         violations: list[ViolationRecord],
     ) -> None:
         job.status = JobStatus.COMPLETED.value
-        job.output_path = str(output_path)
+        job.output_path = str(output_path) if output_path else None
         job.finished_at = datetime.utcnow()
         job.progress = 1.0
         job.violation_count = len(violations)

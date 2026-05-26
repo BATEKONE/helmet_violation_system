@@ -1,45 +1,23 @@
-# --- Python ---
 __pycache__/
-*.py[cod]
+*.pyc
 .pytest_cache/
 .venv/
 venv/
 
-# --- IDE ---
 .cursor/
 .idea/
 .vscode/
 
-# --- Secrets ---
-.env
-.env.*
-!.env.example
-
-# --- Runtime (uploads, jobs, БД) ---
-data/
-*.db
-*.sqlite3
-
-# --- ML / обучение ---
 runs/
-wandb/
-*.pt
-*.pth
-
+# Автоматически сгенерированный файл с абсолютными путями
 configs/helmet_dataset.resolved.yaml
-
-# --- Датасеты (десятки ГБ, сотни тысяч файлов) ---
-datasets/
-
-# --- Результаты inference / UI ---
-outputs/
-events/
-
-# --- Видео и архивы ---
-*.mp4
-*.avi
-*.mov
-*.mkv
 *.tar
 *.tar.gz
 *.zip
+
+# Тяжелый исходный датасет (оставляем вне репозитория/заливки)
+datasets/hozngvan/
+
+data/
+.env
+outputs/temp_upload.mp4

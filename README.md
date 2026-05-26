@@ -59,7 +59,7 @@ python main.py
 
 Кратко:
 1. PostgreSQL + Redis на сервере
-2. Python 3.10: `bash deploy/setup_venv_pyenv.sh` (см. [deploy/DEPLOY.md](deploy/DEPLOY.md))
+2. `venv` + `pip install -r requirements.txt`
 3. `.env` с `DATABASE_URL=postgresql://...`, `INLINE_WORKER=false`
 4. systemd: `helmet-api.service`, `helmet-worker.service`
 
@@ -114,6 +114,34 @@ helmet_violation_system/
 ├── data/             # uploads, jobs (gitignore)
 └── inference/        # CLI
 ```
+
+## Ускорение обработки на сервере
+
+В `.env` (после изменений перезапустите `helmet-api` и `helmet-worker`):
+
+| Переменная | Эффект |
+|------------|--------|
+| `INFERENCE_DEVICE=0` | GPU (если есть на VPS) — **самый большой прирост** |
+| `PROCESS_EVERY_N_FRAMES=2` или `3` | YOLO не на каждом кадре (~×2–×3) |
+| `INFERENCE_IMGSZ=416` | Меньше вход для YOLO (~×1.5–×2 на CPU) |
+| `INFERENCE_MAX_WIDTH=640` | Уменьшение кадра перед детекцией |
+| `EXPORT_ANNOTATED_VIDEO=false` | Без записи mp4 — только нарушения (очень быстро) |
+| `VIDEO_WEB_OPTIMIZE=false` | Без ffmpeg в конце |
+| `TORCH_NUM_THREADS=4` | Задействовать ядра CPU на VPS |
+
+Пример для **слабого CPU VPS**:
+
+```env
+INFERENCE_DEVICE=cpu
+INFERENCE_IMGSZ=416
+INFERENCE_MAX_WIDTH=640
+PROCESS_EVERY_N_FRAMES=3
+EXPORT_ANNOTATED_VIDEO=true
+VIDEO_WEB_OPTIMIZE=false
+TORCH_NUM_THREADS=4
+```
+
+Проверка GPU на сервере: `python -c "import torch; print(torch.cuda.is_available())"`
 
 ## Технологии
 

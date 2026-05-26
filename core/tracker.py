@@ -5,6 +5,11 @@ from supervision.tracker.byte_tracker.core import ByteTrack
 tracker = ByteTrack()
 
 
+def reset_tracks() -> None:
+    global tracker
+    tracker = ByteTrack()
+
+
 def update_tracks(detections):
     boxes = []
     confidences = []

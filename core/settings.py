@@ -27,6 +27,16 @@ class Settings(BaseSettings):
     event_cooldown_sec: float = 5.0
     temporal_window: int = 10
 
+    # --- Скорость инференса (см. README, .env.example) ---
+    inference_device: str = "auto"
+    inference_imgsz: int = 640
+    inference_max_width: int = 960
+    process_every_n_frames: int = 2
+    inference_half: bool = True
+    torch_num_threads: int = 0
+    export_annotated_video: bool = True
+    video_web_optimize: bool = True
+
     model_candidates: list[str] = [
         "runs/helmet_detector/weights/best.pt",
         "runs/helmet_detector2/weights/best.pt",
