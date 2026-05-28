@@ -82,20 +82,48 @@ def build_violation_pdf(events: list[dict], selected_indices: list[int], image_m
     return buffer.getvalue()
 
 
+def load_saved_api_url() -> str:
+    default_url = os.getenv("HELMET_API_URL", DEFAULT_API_URL)
+    cache_path = settings.data_dir / "ui_api_url.txt"
+    if "HELMET_API_URL" in os.environ:
+        return default_url
+    try:
+        if cache_path.exists():
+            saved = cache_path.read_text(encoding="utf-8").strip()
+            if saved:
+                return saved
+    except Exception:
+        pass
+    return default_url
+
+
+def save_api_url(url: str) -> None:
+    cache_path = settings.data_dir / "ui_api_url.txt"
+    try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(url.strip(), encoding="utf-8")
+    except Exception:
+        pass
+
+
 with st.sidebar:
     st.header("Подключение")
-    api_url = st.text_input("URL API", value=os.getenv("HELMET_API_URL", DEFAULT_API_URL))
+    api_url = st.text_input("URL API", value=load_saved_api_url())
     client = HelmetApiClient(api_url)
 
     try:
         health = client.health()
         if health.get("status") == "ok":
             st.success("API доступен")
+            save_api_url(api_url)
         else:
             st.warning(f"API: {health.get('status')} (БД: {health.get('database')}, Redis: {health.get('redis')})")
     except Exception as exc:
         st.error(f"API недоступен: {exc}")
-        st.info("Запустите API: `python scripts/run_api.py` и worker: `python workers/run_worker.py`")
+        st.info(
+            "Проверьте URL API в этой панели. Если сервер удаленный, укажите внешний адрес сервера, "
+            "например: `http://64.188.67.76:8000`."
+        )
 
     st.divider()
     st.header("Модель (на сервере)")
