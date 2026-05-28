@@ -115,7 +115,6 @@ if uploaded:
                     st.metric("Всего нарушений", len(events))
                 else:
                     st.info("Нарушений не обнаружено")
-        ]
                 st.subheader("Снимки нарушений")
                 if events:
                     cols = st.columns(3)
