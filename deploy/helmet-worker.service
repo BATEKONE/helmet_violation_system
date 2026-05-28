@@ -7,6 +7,7 @@ Type=simple
 User=helmet
 WorkingDirectory=/opt/helmet_violation_system
 EnvironmentFile=/opt/helmet_violation_system/.env
+Environment=PYTHONPATH=/opt/helmet_violation_system
 ExecStart=/opt/helmet_violation_system/.venv/bin/python workers/run_worker.py
 Restart=on-failure
 RestartSec=10
