@@ -22,7 +22,6 @@ st.set_page_config(
     page_title="Helmet Violation Detection",
     page_icon="🏍️",
     layout="wide",
-    initial_sidebar_state="collapsed",
 )
 
 settings = get_settings()
@@ -36,16 +35,17 @@ st.markdown(
     "На финальном шаге можно выбрать релевантные кадры и скачать PDF-отчет."
 )
 
+
 def build_violation_pdf(events: list[dict], selected_indices: list[int], image_map: dict[int, bytes]) -> bytes:
     buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
+    pdf = canvas.Canvas(buffer, pagesize=A4)
     page_width, page_height = A4
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(40, page_height - 50, "Отчет о нарушении (отсутствие шлема)")
-    c.setFont("Helvetica", 10)
-    c.drawString(40, page_height - 68, f"Сформирован: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    c.drawString(40, page_height - 84, f"Количество выбранных кадров: {len(selected_indices)}")
+    pdf.setFont("Helvetica-Bold", 16)
+    pdf.drawString(40, page_height - 50, "Отчет о нарушении (отсутствие шлема)")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(40, page_height - 68, f"Сформирован: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    pdf.drawString(40, page_height - 84, f"Количество выбранных кадров: {len(selected_indices)}")
 
     y = page_height - 110
     for idx in selected_indices:
@@ -55,18 +55,18 @@ def build_violation_pdf(events: list[dict], selected_indices: list[int], image_m
             continue
 
         if y < 230:
-            c.showPage()
+            pdf.showPage()
             y = page_height - 50
 
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(40, y, f"Событие #{idx + 1}")
+        pdf.setFont("Helvetica-Bold", 11)
+        pdf.drawString(40, y, f"Событие #{idx + 1}")
         y -= 16
-        c.setFont("Helvetica", 10)
-        c.drawString(40, y, f"track_id: {event.get('track_id', '-')}")
+        pdf.setFont("Helvetica", 10)
+        pdf.drawString(40, y, f"track_id: {event.get('track_id', '-')}")
         y -= 14
-        c.drawString(40, y, f"timestamp: {event.get('timestamp', '-')}")
+        pdf.drawString(40, y, f"timestamp: {event.get('timestamp', '-')}")
         y -= 14
-        c.drawString(40, y, f"confidence: {event.get('confidence', '-')}")
+        pdf.drawString(40, y, f"confidence: {event.get('confidence', '-')}")
         y -= 12
 
         image = ImageReader(BytesIO(image_bytes))
@@ -75,35 +75,45 @@ def build_violation_pdf(events: list[dict], selected_indices: list[int], image_m
         ratio = min(max_w / img_w, max_h / img_h)
         draw_w = img_w * ratio
         draw_h = img_h * ratio
-        c.drawImage(image, 40, y - draw_h, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
+
+        pdf.drawImage(
+            image,
+            40,
+            y - draw_h,
+            width=draw_w,
+            height=draw_h,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
         y -= draw_h + 24
 
-    c.save()
+    pdf.save()
     buffer.seek(0)
     return buffer.getvalue()
 
 
-api_url = os.getenv("HELMET_API_URL", DEFAULT_API_URL)
-client = HelmetApiClient(api_url)
+with st.sidebar:
+    st.header("Подключение")
+    api_url = st.text_input("URL API", value=os.getenv("HELMET_API_URL", DEFAULT_API_URL))
+    client = HelmetApiClient(api_url)
 
-st.caption(f"Модель на сервере: `{model_path.name}`")
-st.caption(f"Подключение к API: `{api_url}`")
-if is_trained:
-    st.success("Обученная модель подключена")
-else:
-    st.warning("Нужно обучение: `python training/train_yolo.py`")
+    try:
+        health = client.health()
+        if health.get("status") == "ok":
+            st.success("API доступен")
+        else:
+            st.warning(f"API: {health.get('status')} (БД: {health.get('database')}, Redis: {health.get('redis')})")
+    except Exception as exc:
+        st.error(f"API недоступен: {exc}")
+        st.info("Запустите API: `python scripts/run_api.py` и worker: `python workers/run_worker.py`")
 
-try:
-    health = client.health()
-    if health.get("status") != "ok":
-        st.warning(f"API: {health.get('status')} (БД: {health.get('database')}, Redis: {health.get('redis')})")
-except Exception as exc:
-    st.error(f"API недоступен: {exc}")
-    st.info(
-        "Проверьте переменную окружения `HELMET_API_URL` и доступность удаленного сервера API. "
-        "Для подключения к серверу задайте, например: "
-        "`$env:HELMET_API_URL=\"http://64.188.67.76:8000\"` (PowerShell) перед запуском `python main.py`."
-    )
+    st.divider()
+    st.header("Модель (на сервере)")
+    st.write(f"**Путь:** `{model_path.name}`")
+    if is_trained:
+        st.success("Обученная модель")
+    else:
+        st.warning("Нужно обучение: `python training/train_yolo.py`")
 
 if "job_data" not in st.session_state:
     st.session_state.job_data = None
@@ -216,6 +226,7 @@ if st.session_state.job_data:
                 )
             else:
                 col.warning("Снимок недоступен")
+
             if col.checkbox(
                 f"Включить в отчет #{i + 1}",
                 key=f"report_event_{i}",
