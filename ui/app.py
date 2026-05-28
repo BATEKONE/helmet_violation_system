@@ -87,6 +87,7 @@ api_url = os.getenv("HELMET_API_URL", DEFAULT_API_URL)
 client = HelmetApiClient(api_url)
 
 st.caption(f"Модель на сервере: `{model_path.name}`")
+st.caption(f"Подключение к API: `{api_url}`")
 if is_trained:
     st.success("Обученная модель подключена")
 else:
@@ -98,7 +99,11 @@ try:
         st.warning(f"API: {health.get('status')} (БД: {health.get('database')}, Redis: {health.get('redis')})")
 except Exception as exc:
     st.error(f"API недоступен: {exc}")
-    st.info("Запустите API: `python scripts/run_api.py` и worker: `python workers/run_worker.py`")
+    st.info(
+        "Проверьте переменную окружения `HELMET_API_URL` и доступность удаленного сервера API. "
+        "Для подключения к серверу задайте, например: "
+        "`$env:HELMET_API_URL=\"http://64.188.67.76:8000\"` (PowerShell) перед запуском `python main.py`."
+    )
 
 if "job_data" not in st.session_state:
     st.session_state.job_data = None
