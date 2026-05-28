@@ -1,14 +1,9 @@
 import os
 import sys
-from datetime import datetime
-from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -16,7 +11,7 @@ if str(ROOT) not in sys.path:
 
 from core.config import get_model_path
 from core.settings import get_settings
-from ui.api_client import DEFAULT_API_URL, HelmetApiClient
+from ui.api_client import HelmetApiClient, DEFAULT_API_URL
 
 st.set_page_config(
     page_title="Helmet Violation Detection",
@@ -31,99 +26,23 @@ is_trained = "helmet_detector" in str(model_path)
 st.title("🏍️ Система детекции нарушений — отсутствие шлема")
 st.markdown(
     "Загрузите видео — анализ выполняется на сервере через API. "
-    "Результаты: обработанное видео, таблица нарушений и снимки. "
-    "На финальном шаге можно выбрать релевантные кадры и скачать PDF-отчет."
+    "Результаты: обработанное видео, таблица нарушений и снимки."
 )
-
-def build_violation_pdf(events: list[dict], selected_indices: list[int], image_map: dict[int, bytes]) -> bytes:
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
-    page_width, page_height = A4
-
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(40, page_height - 50, "Отчет о нарушении (отсутствие шлема)")
-    c.setFont("Helvetica", 10)
-    c.drawString(40, page_height - 68, f"Сформирован: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    c.drawString(40, page_height - 84, f"Количество выбранных кадров: {len(selected_indices)}")
-
-    y = page_height - 110
-    for idx in selected_indices:
-        event = events[idx]
-        image_bytes = image_map.get(idx)
-        if not image_bytes:
-            continue
-
-        if y < 230:
-            c.showPage()
-            y = page_height - 50
-
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(40, y, f"Событие #{idx + 1}")
-        y -= 16
-        c.setFont("Helvetica", 10)
-        c.drawString(40, y, f"track_id: {event.get('track_id', '-')}")
-        y -= 14
-        c.drawString(40, y, f"timestamp: {event.get('timestamp', '-')}")
-        y -= 14
-        c.drawString(40, y, f"confidence: {event.get('confidence', '-')}")
-        y -= 12
-
-        image = ImageReader(BytesIO(image_bytes))
-        img_w, img_h = image.getSize()
-        max_w, max_h = 240, 140
-        ratio = min(max_w / img_w, max_h / img_h)
-        draw_w = img_w * ratio
-        draw_h = img_h * ratio
-        c.drawImage(image, 40, y - draw_h, width=draw_w, height=draw_h, preserveAspectRatio=True, mask="auto")
-        y -= draw_h + 24
-
-    c.save()
-    buffer.seek(0)
-    return buffer.getvalue()
-
-
-def load_saved_api_url() -> str:
-    default_url = os.getenv("HELMET_API_URL", DEFAULT_API_URL)
-    cache_path = settings.data_dir / "ui_api_url.txt"
-    if "HELMET_API_URL" in os.environ:
-        return default_url
-    try:
-        if cache_path.exists():
-            saved = cache_path.read_text(encoding="utf-8").strip()
-            if saved:
-                return saved
-    except Exception:
-        pass
-    return default_url
-
-
-def save_api_url(url: str) -> None:
-    cache_path = settings.data_dir / "ui_api_url.txt"
-    try:
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(url.strip(), encoding="utf-8")
-    except Exception:
-        pass
-
 
 with st.sidebar:
     st.header("Подключение")
-    api_url = st.text_input("URL API", value=load_saved_api_url())
+    api_url = st.text_input("URL API", value=os.getenv("HELMET_API_URL", DEFAULT_API_URL))
     client = HelmetApiClient(api_url)
 
     try:
         health = client.health()
         if health.get("status") == "ok":
             st.success("API доступен")
-            save_api_url(api_url)
         else:
             st.warning(f"API: {health.get('status')} (БД: {health.get('database')}, Redis: {health.get('redis')})")
     except Exception as exc:
         st.error(f"API недоступен: {exc}")
-        st.info(
-            "Проверьте URL API в этой панели. Если сервер удаленный, укажите внешний адрес сервера, "
-            "например: `http://64.188.67.76:8000`."
-        )
+        st.info("Запустите API: `python scripts/run_api.py` и worker: `python workers/run_worker.py`")
 
     st.divider()
     st.header("Модель (на сервере)")
@@ -132,6 +51,8 @@ with st.sidebar:
         st.success("Обученная модель")
     else:
         st.warning("Нужно обучение: `python training/train_yolo.py`")
+
+uploaded = st.file_uploader(
 
 if "job_data" not in st.session_state:
     st.session_state.job_data = None
@@ -165,100 +86,56 @@ if uploaded:
                 job = client.wait_for_job(job_id, progress_callback=on_progress)
 
             progress.progress(1.0)
-            status.empty()
-
-            if job["status"] == "failed":
-                st.error(job.get("error_message") or "Ошибка обработки")
-            else:
-                events = client.list_events(job_id)
-                video_bytes = b""
-                try:
-                    video_bytes = client.download_video(job_id)
-                except Exception:
-                    video_bytes = b""
-
-                image_map: dict[int, bytes] = {}
-                for i, event in enumerate(events):
-                    image_url = event.get("image_url")
-                    if not image_url:
-                        continue
-                    try:
-                        image_map[i] = client.download_image(image_url)
-                    except Exception:
-                        continue
-
-                st.session_state.job_data = {
                     "job_id": job_id,
                     "events": events,
-                    "video_bytes": video_bytes,
-                    "image_map": image_map,
-                }
-                st.success("Анализ завершён")
+                st.subheader("Обработанное видео")
+                try:
+                    video_bytes = client.download_video(job_id)
+                    if video_bytes:
+                        st.video(video_bytes, format="video/mp4")
+                        st.download_button(
+                            "Скачать обработанное видео",
+                            video_bytes,
+                            file_name="helmet_analysis.mp4",
+                            mime="video/mp4",
+                        )
+                except Exception as exc:
+                    st.warning(f"Видео недоступно: {exc}")
+            file_name="helmet_analysis.mp4",
+                st.subheader("Зарегистрированные нарушения")
+                events = client.list_events(job_id)
 
+                if events:
+                    df = pd.DataFrame(events)
+                    display_cols = [
+                        c for c in ("track_id", "violation", "timestamp", "confidence", "bbox")
+                        if c in df.columns
+                    ]
+                    st.dataframe(df[display_cols], use_container_width=True)
+                    st.metric("Всего нарушений", len(events))
+                else:
+                    st.info("Нарушений не обнаружено")
+        ]
+                st.subheader("Снимки нарушений")
+                if events:
+                    cols = st.columns(3)
+                    for i, event in enumerate(events):
+                        try:
+                            img_bytes = client.download_image(event["image_url"])
+                            cols[i % 3].image(
+                                img_bytes,
+                                caption=f"track {event['track_id']}",
+                                use_container_width=True,
+                            )
+                        except Exception:
+                            cols[i % 3].warning("Снимок недоступен")
+                else:
+                    st.info("Снимки отсутствуют")
+                f"Включить в отчет #{i + 1}",
         except Exception as exc:
             st.error(f"Ошибка: {exc}")
 else:
     st.info("Выберите видеофайл для начала анализа")
-
-if st.session_state.job_data:
-    events = st.session_state.job_data["events"]
-    video_bytes = st.session_state.job_data["video_bytes"]
-    image_map = st.session_state.job_data["image_map"]
-
-    st.subheader("Обработанное видео")
-    if video_bytes:
-        st.video(video_bytes, format="video/mp4")
-        st.download_button(
-            "Скачать обработанное видео",
-            video_bytes,
-            file_name="helmet_analysis.mp4",
-            mime="video/mp4",
-        )
-    else:
-        st.warning("Видео недоступно")
-
-    st.subheader("Зарегистрированные нарушения")
-    if events:
-        df = pd.DataFrame(events)
-        display_cols = [
-            c for c in ("track_id", "violation", "timestamp", "confidence", "bbox")
-            if c in df.columns
-        ]
-        st.dataframe(df[display_cols], use_container_width=True)
-        st.metric("Всего нарушений", len(events))
-    else:
-        st.info("Нарушений не обнаружено")
-
-    st.subheader("Выбор релевантных снимков для отчета")
-    if events:
-        selected_indices = []
-        cols = st.columns(3)
-        for i, event in enumerate(events):
-            col = cols[i % 3]
-            image_bytes = image_map.get(i)
-            if image_bytes:
-                col.image(
-                    image_bytes,
-                    caption=f"Событие {i + 1} | track {event.get('track_id', '-')}",
-                    use_container_width=True,
-                )
-            else:
-                col.warning("Снимок недоступен")
-            if col.checkbox(
-                f"Включить в отчет #{i + 1}",
-                key=f"report_event_{i}",
-                value=(i == 0),
-            ):
-                selected_indices.append(i)
-
-        if selected_indices:
-            pdf_bytes = build_violation_pdf(events, selected_indices, image_map)
-            st.download_button(
-                "Скачать PDF-отчет по выбранным кадрам",
-                data=pdf_bytes,
-                file_name="helmet_violation_report.pdf",
-                mime="application/pdf",
-                type="primary",
             )
         else:
             st.info("Выберите хотя бы один снимок для формирования PDF")
