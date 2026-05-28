@@ -22,7 +22,6 @@ st.set_page_config(
     page_title="Helmet Violation Detection",
     page_icon="🏍️",
     layout="wide",
-    initial_sidebar_state="collapsed",
 )
 
 settings = get_settings()
@@ -83,27 +82,28 @@ def build_violation_pdf(events: list[dict], selected_indices: list[int], image_m
     return buffer.getvalue()
 
 
-api_url = os.getenv("HELMET_API_URL", DEFAULT_API_URL)
-client = HelmetApiClient(api_url)
+with st.sidebar:
+    st.header("Подключение")
+    api_url = st.text_input("URL API", value=os.getenv("HELMET_API_URL", DEFAULT_API_URL))
+    client = HelmetApiClient(api_url)
 
-st.caption(f"Модель на сервере: `{model_path.name}`")
-st.caption(f"Подключение к API: `{api_url}`")
-if is_trained:
-    st.success("Обученная модель подключена")
-else:
-    st.warning("Нужно обучение: `python training/train_yolo.py`")
+    try:
+        health = client.health()
+        if health.get("status") == "ok":
+            st.success("API доступен")
+        else:
+            st.warning(f"API: {health.get('status')} (БД: {health.get('database')}, Redis: {health.get('redis')})")
+    except Exception as exc:
+        st.error(f"API недоступен: {exc}")
+        st.info("Запустите API: `python scripts/run_api.py` и worker: `python workers/run_worker.py`")
 
-try:
-    health = client.health()
-    if health.get("status") != "ok":
-        st.warning(f"API: {health.get('status')} (БД: {health.get('database')}, Redis: {health.get('redis')})")
-except Exception as exc:
-    st.error(f"API недоступен: {exc}")
-    st.info(
-        "Проверьте переменную окружения `HELMET_API_URL` и доступность удаленного сервера API. "
-        "Для подключения к серверу задайте, например: "
-        "`$env:HELMET_API_URL=\"http://64.188.67.76:8000\"` (PowerShell) перед запуском `python main.py`."
-    )
+    st.divider()
+    st.header("Модель (на сервере)")
+    st.write(f"**Путь:** `{model_path.name}`")
+    if is_trained:
+        st.success("Обученная модель")
+    else:
+        st.warning("Нужно обучение: `python training/train_yolo.py`")
 
 if "job_data" not in st.session_state:
     st.session_state.job_data = None
