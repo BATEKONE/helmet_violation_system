@@ -293,42 +293,36 @@ if st.session_state.job_data:
             if c in df.columns
         ]
 
-        track_ids = sorted({event["track_id"] for event in events})
-        violation_types = sorted({event["violation"] for event in events})
+        # Собираем объекты (track_id) и подсчитываем количество снимков у каждого
+        track_to_indices = defaultdict(list)
+        for i, ev in enumerate(events):
+            track_to_indices[ev["track_id"]].append(i)
 
-        selected_track = st.selectbox(
-            "Фильтр по объекту (track_id)",
-            ["Все"] + [str(track_id) for track_id in track_ids],
-        )
-        selected_violation = st.selectbox(
-            "Фильтр по типу нарушения",
-            ["Все"] + violation_types,
-        )
+        tracks_list = []
+        for track_id, idxs in track_to_indices.items():
+            first_ts = events[idxs[0]].get("timestamp")
+            tracks_list.append({"track_id": track_id, "count": len(idxs), "first_timestamp": first_ts})
 
-        filtered_indices = [
-            i
-            for i, event in enumerate(events)
-            if (selected_track == "Все" or str(event["track_id"]) == selected_track)
-            and (selected_violation == "Все" or event["violation"] == selected_violation)
-        ]
-        filtered_events = [events[i] for i in filtered_indices]
+        if tracks_list:
+            tracks_df = pd.DataFrame(tracks_list).sort_values("first_timestamp")
+            st.markdown("**Список обнаруженных объектов (track_id)**")
+            st.dataframe(tracks_df[["track_id", "count", "first_timestamp"]], use_container_width=True)
 
-        if filtered_events:
-            grouped = defaultdict(list)
-            for event in filtered_events:
-                grouped[event["track_id"]].append(event)
-
-            st.markdown("**Группы нарушений по одному объекту:**")
-            for track_id, group in grouped.items():
-                st.write(f"track_id {track_id}: {len(group)} снимков")
-
-            st.dataframe(
-                pd.DataFrame(filtered_events)[display_cols],
-                use_container_width=True,
+            selected_track = st.selectbox(
+                "Выберите объект (track_id)",
+                ["Все"] + [str(x) for x in tracks_df["track_id"]],
             )
-            st.metric("Всего нарушений", len(filtered_events))
+
+            if selected_track == "Все":
+                st.info("Выберите объект из списка, чтобы показать его снимки")
+                display_indices = []
+            else:
+                selected_track = int(selected_track)
+                display_indices = track_to_indices.get(selected_track, [])
+                st.markdown(f"Показаны снимки для track_id {selected_track}: {len(display_indices)} шт.")
+                st.metric("Снимков у объекта", len(display_indices))
         else:
-            st.warning("Нет событий для выбранного фильтра")
+            st.warning("Нет найденных объектов с нарушениями")
     else:
         st.info("Нарушений не обнаружено")
 
@@ -346,8 +340,15 @@ if st.session_state.job_data:
             comment = st.text_area("Комментарий", value="", height=80)
 
         selected_indices = []
+        # определяем, какие индексы показывать: по выбранному объекту или все
+        if "display_indices" in locals() and display_indices:
+            show_indices = display_indices
+        else:
+            show_indices = list(range(len(events)))
+
         cols = st.columns(3)
-        for index, event in zip(filtered_indices, filtered_events):
+        for index in show_indices:
+            event = events[index]
             col = cols[index % 3]
             image_bytes = image_map.get(index)
             if image_bytes:
