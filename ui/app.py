@@ -358,23 +358,38 @@ if st.session_state.job_data:
         # определяем, какие индексы показывать: по выбранному объекту или все
         show_indices = display_indices if display_indices else list(range(len(events)))
 
-        # Если выбран конкретный объект — показываем его снимки вертикально одинакового размера без рамок
+        # Если выбран конкретный объект — показываем его снимки в одну горизонтальную строку без изменения размера
         if selected_track_id is not None:
+            imgs_html = [
+                '<div style="display:flex;flex-direction:row;gap:8px;overflow-x:auto;align-items:flex-start;">'
+            ]
             for index in show_indices:
-                event = events[index]
                 image_bytes = image_map.get(index)
-                track_id = event.get("track_id", "-")
-                caption = f"Событие {index + 1} | track {track_id}"
-                if image_bytes:
-                    try:
-                        st.image(image_bytes, caption=caption, use_column_width=False, width=600)
-                    except Exception:
-                        st.image(image_bytes, caption=caption)
-                else:
-                    st.warning(f"Снимок {index + 1} недоступен")
+                if not image_bytes:
+                    continue
+                b64 = base64.b64encode(image_bytes).decode("utf-8")
+                imgs_html.append(
+                    f'<div style="display:inline-block;text-align:center;">'
+                    f'<img src="data:image/jpeg;base64,{b64}" style="border:0; display:inline-block; max-height:400px;" />'
+                    f'<div style="font-size:12px; margin-top:4px;">Событие {index + 1}</div>'
+                    f'</div>'
+                )
+            imgs_html.append("</div>")
+            if len(imgs_html) > 2:
+                st.markdown("".join(imgs_html), unsafe_allow_html=True)
+            else:
+                st.info("Нет доступных снимков для выбранного объекта")
 
-                if st.checkbox(f"Включить в протокол #{index + 1}", key=f"report_event_{index}", value=(len(selected_indices) == 0)):
-                    selected_indices.append(index)
+            if show_indices:
+                cols_cb = st.columns(len(show_indices))
+                for i, index in enumerate(show_indices):
+                    with cols_cb[i]:
+                        if st.checkbox(
+                            f"Включить в протокол #{index + 1}",
+                            key=f"report_event_{index}",
+                            value=(len(selected_indices) == 0),
+                        ):
+                            selected_indices.append(index)
         else:
             # По умолчанию — сетка по 3 колонки
             cols = st.columns(3)
@@ -389,17 +404,21 @@ if st.session_state.job_data:
                         b64 = base64.b64encode(image_bytes).decode("utf-8")
                         html = (
                             f'<div style="text-align:center">'
-                            f'<img src="data:image/jpeg;base64,{b64}" style="width:100%; border:0;"/>'
+                            f'<img src="data:image/jpeg;base64,{b64}" style="max-width:100%; border:0;"/>'
                             f'<div style="font-size:12px; margin-top:4px;">{caption}</div>'
                             f'</div>'
                         )
                         col.markdown(html, unsafe_allow_html=True)
                     except Exception:
-                        col.image(image_bytes, caption=caption, use_column_width=True)
+                        col.image(image_bytes, caption=caption, width=300)
                 else:
                     col.warning("Снимок недоступен")
 
-                if col.checkbox(f"Включить в протокол #{index + 1}", key=f"report_event_{index}", value=(len(selected_indices) == 0)):
+                if col.checkbox(
+                    f"Включить в протокол #{index + 1}",
+                    key=f"report_event_{index}",
+                    value=(len(selected_indices) == 0),
+                ):
                     selected_indices.append(index)
 
         if selected_indices:
