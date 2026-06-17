@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -46,11 +46,13 @@ class ViolationEvent(Base):
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
     job_id: Mapped[str] = mapped_column(String(36), ForeignKey("jobs.id"), index=True)
-    track_id: Mapped[int] = mapped_column(Integer)
+    track_id: Mapped[int] = mapped_column(Integer, index=True)
     violation: Mapped[str] = mapped_column(String(64), default="NO_HELMET")
     timestamp: Mapped[datetime] = mapped_column(DateTime)
     confidence: Mapped[float] = mapped_column(Float)
     bbox: Mapped[list] = mapped_column(JSON)
     image_path: Mapped[str] = mapped_column(Text)
+    is_fined: Mapped[bool] = mapped_column(Boolean, default=False)
+    fine_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     job: Mapped["Job"] = relationship(back_populates="events")

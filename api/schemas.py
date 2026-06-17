@@ -32,6 +32,8 @@ class ViolationEventResponse(BaseModel):
     confidence: float
     bbox: list[int]
     image_url: str
+    is_fined: bool = False
+    fine_amount: int | None = None
 
 
 class HealthResponse(BaseModel):
@@ -42,3 +44,40 @@ class HealthResponse(BaseModel):
 
 class JobListResponse(BaseModel):
     jobs: list[JobResponse] = Field(default_factory=list)
+
+
+# Новые схемы для фильтрации по объектам
+class ObjectViolationDetail(BaseModel):
+    """Информация об одном нарушении"""
+    id: str
+    timestamp: datetime
+    confidence: float
+    bbox: list[int]
+    image_url: str
+    is_fined: bool = False
+    fine_amount: int | None = None
+
+
+class ObjectSummary(BaseModel):
+    """Сводка по одному объекту (человеку)"""
+    track_id: int
+    violation_count: int
+    average_confidence: float
+    first_violation_time: datetime
+    last_violation_time: datetime
+    total_fines: int = 0
+    violations: list[ObjectViolationDetail] = Field(default_factory=list)
+
+
+class JobObjectsResponse(BaseModel):
+    """Список всех объектов с нарушениями в задаче"""
+    job_id: str
+    total_objects: int
+    total_violations: int
+    total_fines: int = 0
+    objects: list[ObjectSummary] = Field(default_factory=list)
+
+
+class ApplyFineRequest(BaseModel):
+    """Запрос на применение штрафа"""
+    fine_amount: int = Field(..., gt=0, description="Размер штрафа в рублях")
