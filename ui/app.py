@@ -24,7 +24,7 @@ from ui.api_client import HelmetApiClient, DEFAULT_API_URL
 
 st.set_page_config(
     page_title="Helmet Violation Detection",
-    page_icon="🏍️",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
