@@ -80,8 +80,16 @@ class JobRepository:
         job.finished_at = datetime.utcnow()
         self.session.flush()
 
-    def list_events(self, job_id: str) -> list[ViolationEvent]:
-        job = self.get(job_id)
-        if job is None:
-            return []
-        return list(job.events)
+    def list_events(
+        self,
+        job_id: str,
+        track_id: int | None = None,
+        violation: str | None = None,
+    ) -> list[ViolationEvent]:
+        stmt = select(ViolationEvent).where(ViolationEvent.job_id == job_id)
+        if track_id is not None:
+            stmt = stmt.where(ViolationEvent.track_id == track_id)
+        if violation:
+            stmt = stmt.where(ViolationEvent.violation == violation)
+        stmt = stmt.order_by(ViolationEvent.timestamp.asc())
+        return list(self.session.scalars(stmt))

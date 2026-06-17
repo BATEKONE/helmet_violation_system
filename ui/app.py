@@ -1,5 +1,6 @@
 import os
 import sys
+from collections import defaultdict
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -291,8 +292,43 @@ if st.session_state.job_data:
             c for c in ("track_id", "violation", "timestamp", "confidence", "bbox")
             if c in df.columns
         ]
-        st.dataframe(df[display_cols], use_container_width=True)
-        st.metric("Всего нарушений", len(events))
+
+        track_ids = sorted({event["track_id"] for event in events})
+        violation_types = sorted({event["violation"] for event in events})
+
+        selected_track = st.selectbox(
+            "Фильтр по объекту (track_id)",
+            ["Все"] + [str(track_id) for track_id in track_ids],
+        )
+        selected_violation = st.selectbox(
+            "Фильтр по типу нарушения",
+            ["Все"] + violation_types,
+        )
+
+        filtered_indices = [
+            i
+            for i, event in enumerate(events)
+            if (selected_track == "Все" or str(event["track_id"]) == selected_track)
+            and (selected_violation == "Все" or event["violation"] == selected_violation)
+        ]
+        filtered_events = [events[i] for i in filtered_indices]
+
+        if filtered_events:
+            grouped = defaultdict(list)
+            for event in filtered_events:
+                grouped[event["track_id"]].append(event)
+
+            st.markdown("**Группы нарушений по одному объекту:**")
+            for track_id, group in grouped.items():
+                st.write(f"track_id {track_id}: {len(group)} снимков")
+
+            st.dataframe(
+                pd.DataFrame(filtered_events)[display_cols],
+                use_container_width=True,
+            )
+            st.metric("Всего нарушений", len(filtered_events))
+        else:
+            st.warning("Нет событий для выбранного фильтра")
     else:
         st.info("Нарушений не обнаружено")
 
@@ -311,19 +347,23 @@ if st.session_state.job_data:
 
         selected_indices = []
         cols = st.columns(3)
-        for i, event in enumerate(events):
-            col = cols[i % 3]
-            image_bytes = image_map.get(i)
+        for index, event in zip(filtered_indices, filtered_events):
+            col = cols[index % 3]
+            image_bytes = image_map.get(index)
             if image_bytes:
                 col.image(
                     image_bytes,
-                    caption=f"Событие {i + 1} | track {event.get('track_id', '-')}",
+                    caption=f"Событие {index + 1} | track {event.get('track_id', '-')}",
                     use_container_width=True,
                 )
             else:
                 col.warning("Снимок недоступен")
-            if col.checkbox(f"Включить в протокол #{i + 1}", key=f"report_event_{i}", value=(i == 0)):
-                selected_indices.append(i)
+            if col.checkbox(
+                f"Включить в протокол #{index + 1}",
+                key=f"report_event_{index}",
+                value=(len(selected_indices) == 0),
+            ):
+                selected_indices.append(index)
 
         if selected_indices:
             protocol_meta = {

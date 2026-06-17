@@ -34,9 +34,23 @@ class HelmetApiClient:
             response.raise_for_status()
             return response.json()
 
-    def list_events(self, job_id: str) -> list:
+    def list_events(
+        self,
+        job_id: str,
+        track_id: int | None = None,
+        violation: str | None = None,
+    ) -> list:
+        params = {}
+        if track_id is not None:
+            params["track_id"] = track_id
+        if violation:
+            params["violation"] = violation
+
         with httpx.Client(base_url=self.base_url, timeout=30.0) as client:
-            response = client.get(f"/api/v1/jobs/{job_id}/events")
+            response = client.get(
+                f"/api/v1/jobs/{job_id}/events",
+                params=params,
+            )
             response.raise_for_status()
             return response.json()
 

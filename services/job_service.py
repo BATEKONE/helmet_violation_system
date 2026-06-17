@@ -53,5 +53,10 @@ class JobService:
     def list_jobs(self, limit: int = 50):
         return self.repo.list_recent(limit)
 
-    def list_events(self, job_id: str):
-        return self.repo.list_events(job_id)
+    def list_events(
+        self,
+        job_id: str,
+        track_id: int | None = None,
+        violation: str | None = None,
+    ):
+        return self.repo.list_events(job_id, track_id=track_id, violation=violation)
