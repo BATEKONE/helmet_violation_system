@@ -24,7 +24,7 @@ from ui.api_client import HelmetApiClient, DEFAULT_API_URL
 
 st.set_page_config(
     page_title="Helmet Violation Detection",
-    page_icon="",
+    page_icon="🏍️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -358,34 +358,49 @@ if st.session_state.job_data:
         # определяем, какие индексы показывать: по выбранному объекту или все
         show_indices = display_indices if display_indices else list(range(len(events)))
 
-        cols = st.columns(3)
-        for index in show_indices:
-            event = events[index]
-            col = cols[index % 3]
-            image_bytes = image_map.get(index)
-            track_id = event.get("track_id", "-")
-            if image_bytes:
-                try:
-                    b64 = base64.b64encode(image_bytes).decode("utf-8")
-                    border_color = "#4CAF50" if selected_track_id is not None and track_id == selected_track_id else "#ddd"
-                    caption = f"Событие {index + 1} | track {track_id}"
-                    html = (
-                        f'<div style="text-align:center">'
-                        f'<img src="data:image/jpeg;base64,{b64}" style="width:100%; border:4px solid {border_color}; border-radius:4px;"/>'
-                        f'<div style="font-size:12px; margin-top:4px;">{caption}</div>'
-                        f'</div>'
-                    )
-                    col.markdown(html, unsafe_allow_html=True)
-                except Exception:
-                    col.image(image_bytes, caption=f"Событие {index + 1} | track {track_id}")
-            else:
-                col.warning("Снимок недоступен")
-            if col.checkbox(
-                f"Включить в протокол #{index + 1}",
-                key=f"report_event_{index}",
-                value=(len(selected_indices) == 0),
-            ):
-                selected_indices.append(index)
+        # Если выбран конкретный объект — показываем его снимки вертикально одинакового размера без рамок
+        if selected_track_id is not None:
+            for index in show_indices:
+                event = events[index]
+                image_bytes = image_map.get(index)
+                track_id = event.get("track_id", "-")
+                caption = f"Событие {index + 1} | track {track_id}"
+                if image_bytes:
+                    try:
+                        st.image(image_bytes, caption=caption, use_column_width=False, width=600)
+                    except Exception:
+                        st.image(image_bytes, caption=caption)
+                else:
+                    st.warning(f"Снимок {index + 1} недоступен")
+
+                if st.checkbox(f"Включить в протокол #{index + 1}", key=f"report_event_{index}", value=(len(selected_indices) == 0)):
+                    selected_indices.append(index)
+        else:
+            # По умолчанию — сетка по 3 колонки
+            cols = st.columns(3)
+            for idx, index in enumerate(show_indices):
+                event = events[index]
+                col = cols[idx % 3]
+                image_bytes = image_map.get(index)
+                track_id = event.get("track_id", "-")
+                caption = f"Событие {index + 1} | track {track_id}"
+                if image_bytes:
+                    try:
+                        b64 = base64.b64encode(image_bytes).decode("utf-8")
+                        html = (
+                            f'<div style="text-align:center">'
+                            f'<img src="data:image/jpeg;base64,{b64}" style="width:100%; border:0;"/>'
+                            f'<div style="font-size:12px; margin-top:4px;">{caption}</div>'
+                            f'</div>'
+                        )
+                        col.markdown(html, unsafe_allow_html=True)
+                    except Exception:
+                        col.image(image_bytes, caption=caption, use_column_width=True)
+                else:
+                    col.warning("Снимок недоступен")
+
+                if col.checkbox(f"Включить в протокол #{index + 1}", key=f"report_event_{index}", value=(len(selected_indices) == 0)):
+                    selected_indices.append(index)
 
         if selected_indices:
             protocol_meta = {
