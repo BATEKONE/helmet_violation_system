@@ -370,7 +370,7 @@ if st.session_state.job_data:
                 b64 = base64.b64encode(image_bytes).decode("utf-8")
                 imgs_html.append(
                     f'<div style="display:inline-block;text-align:center;">'
-                    f'<img src="data:image/jpeg;base64,{b64}" style="border:0; display:inline-block; max-height:400px;" />'
+                    f'<img src="data:image/jpeg;base64,{b64}" style="border:0; display:inline-block; max-height:700px; height:auto;" />'
                     f'<div style="font-size:12px; margin-top:4px;">Событие {index + 1}</div>'
                     f'</div>'
                 )
