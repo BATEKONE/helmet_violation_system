@@ -33,7 +33,7 @@ settings = get_settings()
 model_path = get_model_path()
 is_trained = "helmet_detector" in str(model_path)
 
-st.title("🏍️ Система детекции нарушений — отсутствие шлема")
+st.title("Система детекции нарушений — отсутствие шлема")
 st.markdown(
     "Загрузите видео — анализ выполняется на сервере через API. "
     "Результаты: обработанное видео, таблица нарушений и снимки."
