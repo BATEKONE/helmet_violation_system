@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+import base64
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
@@ -351,12 +352,21 @@ if st.session_state.job_data:
             event = events[index]
             col = cols[index % 3]
             image_bytes = image_map.get(index)
+            track_id = event.get("track_id", "-")
             if image_bytes:
-                col.image(
-                    image_bytes,
-                    caption=f"Событие {index + 1} | track {event.get('track_id', '-')}",
-                    use_container_width=True,
-                )
+                try:
+                    b64 = base64.b64encode(image_bytes).decode("utf-8")
+                    # highlight selected track with green border
+                    border_color = "#4CAF50" if ("display_indices" in locals() and display_indices and track_id in [events[i]["track_id"] for i in display_indices]) else "#ddd"
+                    html = (
+                        f'<div style="text-align:center">'
+                        f'<img src="data:image/jpeg;base64,{b64}" style="width:100%; border:4px solid {border_color}; border-radius:4px;"/>'
+                        f'<div style="font-size:12px; margin-top:4px;">Событие {index + 1} | track {track_id}</div>'
+                        f'</div>'
+                    )
+                    col.markdown(html, unsafe_allow_html=True)
+                except Exception:
+                    col.image(image_bytes, caption=f"Событие {index + 1} | track {track_id}")
             else:
                 col.warning("Снимок недоступен")
             if col.checkbox(
