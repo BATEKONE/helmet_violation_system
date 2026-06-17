@@ -315,17 +315,31 @@ if st.session_state.job_data:
             )
 
             if selected_track == "Все":
-                st.info("Выберите объект из списка, чтобы показать его снимки")
-                display_indices = []
+                selected_track_id = None
+                display_indices = list(range(len(events)))
+                st.info("Выбрано: все объекты. Для просмотра привязки выберите конкретный track_id.")
             else:
-                selected_track = int(selected_track)
-                display_indices = track_to_indices.get(selected_track, [])
-                st.markdown(f"Показаны снимки для track_id {selected_track}: {len(display_indices)} шт.")
+                selected_track_id = int(selected_track)
+                display_indices = track_to_indices.get(selected_track_id, [])
+                st.markdown(f"Показаны снимки для track_id {selected_track_id}: {len(display_indices)} шт.")
                 st.metric("Снимков у объекта", len(display_indices))
+
+            filtered_events = [events[i] for i in display_indices]
+            st.markdown("**Таблица событий для выбранного объекта**")
+            st.dataframe(
+                pd.DataFrame(filtered_events)[display_cols],
+                use_container_width=True,
+            )
         else:
             st.warning("Нет найденных объектов с нарушениями")
+            selected_track_id = None
+            display_indices = []
+            filtered_events = []
     else:
         st.info("Нарушений не обнаружено")
+        selected_track_id = None
+        display_indices = []
+        filtered_events = []
 
     st.subheader("Выберите релевантные снимки для PDF-протокола")
     if events:
@@ -342,10 +356,7 @@ if st.session_state.job_data:
 
         selected_indices = []
         # определяем, какие индексы показывать: по выбранному объекту или все
-        if "display_indices" in locals() and display_indices:
-            show_indices = display_indices
-        else:
-            show_indices = list(range(len(events)))
+        show_indices = display_indices if display_indices else list(range(len(events)))
 
         cols = st.columns(3)
         for index in show_indices:
@@ -356,12 +367,12 @@ if st.session_state.job_data:
             if image_bytes:
                 try:
                     b64 = base64.b64encode(image_bytes).decode("utf-8")
-                    # highlight selected track with green border
-                    border_color = "#4CAF50" if ("display_indices" in locals() and display_indices and track_id in [events[i]["track_id"] for i in display_indices]) else "#ddd"
+                    border_color = "#4CAF50" if selected_track_id is not None and track_id == selected_track_id else "#ddd"
+                    caption = f"Событие {index + 1} | track {track_id}"
                     html = (
                         f'<div style="text-align:center">'
                         f'<img src="data:image/jpeg;base64,{b64}" style="width:100%; border:4px solid {border_color}; border-radius:4px;"/>'
-                        f'<div style="font-size:12px; margin-top:4px;">Событие {index + 1} | track {track_id}</div>'
+                        f'<div style="font-size:12px; margin-top:4px;">{caption}</div>'
                         f'</div>'
                     )
                     col.markdown(html, unsafe_allow_html=True)
