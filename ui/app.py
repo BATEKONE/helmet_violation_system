@@ -375,21 +375,18 @@ if st.session_state.job_data:
                     f'</div>'
                 )
             imgs_html.append("</div>")
-            if len(imgs_html) > 2:
-                st.markdown("".join(imgs_html), unsafe_allow_html=True)
+            # Показываем галерею в одну строку, без переноса
+            gallery_html = "".join(imgs_html)
+            if gallery_html.strip():
+                st.markdown(gallery_html.replace('flex-direction:row;', 'flex-direction:row;flex-wrap:nowrap;'), unsafe_allow_html=True)
             else:
                 st.info("Нет доступных снимков для выбранного объекта")
 
-            if show_indices:
-                cols_cb = st.columns(len(show_indices))
-                for i, index in enumerate(show_indices):
-                    with cols_cb[i]:
-                        if st.checkbox(
-                            f"Включить в протокол #{index + 1}",
-                            key=f"report_event_{index}",
-                            value=(len(selected_indices) == 0),
-                        ):
-                            selected_indices.append(index)
+            # Выбор кадров для протокола через multiselect (устойчиво и без ломки верстки)
+            choice_labels = [f"Событие {index + 1} | track {events[index].get('track_id', '-')}" for index in show_indices]
+            default = [choice_labels[0]] if choice_labels else []
+            selected_labels = st.multiselect("Выберите кадры для протокола", choice_labels, default=default)
+            selected_indices = [show_indices[choice_labels.index(lbl)] for lbl in selected_labels]
         else:
             # По умолчанию — сетка по 3 колонки
             cols = st.columns(3)
